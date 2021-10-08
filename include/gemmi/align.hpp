@@ -155,7 +155,9 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
                                          PolymerType ptype,
                                          SupSelect sel,
                                          char altloc='\0',
-                                         bool current_rmsd=false) {
+                                         bool current_rmsd=false,
+                                         bool superposed_rmsd=false
+                                         ) {
   AlignmentScoring scoring;
   AlignmentResult result = align_sequence_to_polymer(fixed.extract_sequence(),
                                                      movable, ptype, scoring);
@@ -203,7 +205,16 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
     r.rmsd = std::sqrt(sd / r.count);
     return r;
   }
+
   const double *weights = nullptr;
+
+  if (superposed_rmsd) {
+    SupResult r;
+    r.count = pos1.size();
+    calculate_rmsd_of_superposed_positions(pos1.data(), pos2.data(), pos1.size(), weights);
+    return r;
+  }
+  
   return superpose_positions(pos1.data(), pos2.data(), pos1.size(), weights);
 }
 
