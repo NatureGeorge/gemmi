@@ -38,6 +38,9 @@ gemmi/calculate.hpp
 gemmi/ccp4.hpp
     CCP4 format for maps and masks.
 
+gemmi/cellred.hpp
+    Unit cell reductions: Buerger, Niggli, Selling-Delaunay.
+
 gemmi/chemcomp.hpp
     ChemComp - chemical component that represents a monomer from Refmac
     monomer library, or from PDB CCD.
@@ -101,9 +104,6 @@ gemmi/fstream.hpp
 
 gemmi/grid.hpp
     3d grids used by CCP4 maps, cell-method search and hkl data.
-
-gemmi/gruber.hpp
-    Unit cell reduction to Buerger or Niggli cell. Uses G6 (Gruber) vector.
 
 gemmi/gz.hpp
     Functions for transparent reading of gzipped files. Uses zlib.
