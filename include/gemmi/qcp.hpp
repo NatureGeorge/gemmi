@@ -115,85 +115,14 @@ inline double qcp_inner_product(Mat33& mat, const Position* pos1, const Position
 }
 
 // helper function
-inline int fast_calc_rmsd_and_rotation(Mat33* rot, const Mat33& A, double *rmsd,
-                                       double E0, double len) {
+inline int fast_calc_rotation(Mat33 *rot, double Sxx, double Syy, double Szz, double Sxy, double Syx, double Sxz, double Szx, double Syz, double Szy, double mxEigenV) {
   const double evecprec = 1e-6;
-  const double evalprec = 1e-11;
-
-  double Sxx, Sxy, Sxz, Syx, Syy, Syz, Szx, Szy, Szz;
-  Sxx = A[0][0]; Sxy = A[0][1]; Sxz = A[0][2];
-  Syx = A[1][0]; Syy = A[1][1]; Syz = A[1][2];
-  Szx = A[2][0]; Szy = A[2][1]; Szz = A[2][2];
-
-  double Sxx2 = Sxx * Sxx;
-  double Syy2 = Syy * Syy;
-  double Szz2 = Szz * Szz;
-
-  double Sxy2 = Sxy * Sxy;
-  double Syz2 = Syz * Syz;
-  double Sxz2 = Sxz * Sxz;
-
-  double Syx2 = Syx * Syx;
-  double Szy2 = Szy * Szy;
-  double Szx2 = Szx * Szx;
-
-  double SyzSzymSyySzz2 = 2.0 * (Syz*Szy - Syy*Szz);
-  double Sxx2Syy2Szz2Syz2Szy2 = Syy2 + Szz2 - Sxx2 + Syz2 + Szy2;
-
-  double C[4];
-  C[2] = -2.0 * (Sxx2 + Syy2 + Szz2 + Sxy2 + Syx2 + Sxz2 + Szx2 + Syz2 + Szy2);
-  C[1] = 8.0 * (Sxx*Syz*Szy + Syy*Szx*Sxz + Szz*Sxy*Syx - Sxx*Syy*Szz - Syz*Szx*Sxy - Szy*Syx*Sxz);
-
-  double SxzpSzx = Sxz + Szx;
-  double SyzpSzy = Syz + Szy;
-  double SxypSyx = Sxy + Syx;
-  double SyzmSzy = Syz - Szy;
-  double SxzmSzx = Sxz - Szx;
-  double SxymSyx = Sxy - Syx;
-  double SxxpSyy = Sxx + Syy;
-  double SxxmSyy = Sxx - Syy;
-  double Sxy2Sxz2Syx2Szx2 = Sxy2 + Sxz2 - Syx2 - Szx2;
-
-  C[0] = Sxy2Sxz2Syx2Szx2 * Sxy2Sxz2Syx2Szx2
-    + (Sxx2Syy2Szz2Syz2Szy2 + SyzSzymSyySzz2) * (Sxx2Syy2Szz2Syz2Szy2 - SyzSzymSyySzz2)
-    + (-(SxzpSzx)*(SyzmSzy)+(SxymSyx)*(SxxmSyy-Szz)) * (-(SxzmSzx)*(SyzpSzy)+(SxymSyx)*(SxxmSyy+Szz))
-    + (-(SxzpSzx)*(SyzpSzy)-(SxypSyx)*(SxxpSyy-Szz)) * (-(SxzmSzx)*(SyzmSzy)-(SxypSyx)*(SxxpSyy+Szz))
-    + (+(SxypSyx)*(SyzpSzy)+(SxzpSzx)*(SxxmSyy+Szz)) * (-(SxymSyx)*(SyzmSzy)+(SxzpSzx)*(SxxpSyy+Szz))
-    + (+(SxypSyx)*(SyzmSzy)+(SxzmSzx)*(SxxmSyy-Szz)) * (-(SxymSyx)*(SyzpSzy)+(SxzmSzx)*(SxxpSyy-Szz));
-
-  /* Newton-Raphson */
-  double mxEigenV = E0;
-  int i;
-  double oldg = 0.0;
-  for (i = 0; i < 50; ++i) {
-    oldg = mxEigenV;
-    double x2 = mxEigenV * mxEigenV;
-    double b = (x2 + C[2]) * mxEigenV;
-    double a = b + C[1];
-    double delta = (a * mxEigenV + C[0]) / (2.0 * x2 * mxEigenV + b + a);
-    mxEigenV -= delta;
-    // printf("\n diff[%3d]: %16g %16g %16g", i, mxEigenV - oldg, evalprec*mxEigenV, mxEigenV);
-    if (std::fabs(mxEigenV - oldg) < std::fabs(evalprec * mxEigenV))
-      break;
-  }
-  if (i == 50)
-    std::fprintf(stderr,"\nMore than %d iterations needed!\n", i);
-
-  // the fabs() is to guard against extremely small, but *negative* numbers
-  // due to floating point error
-  double rms = std::sqrt(std::fabs(2.0 * (E0 - mxEigenV) / len));
-  (*rmsd) = rms;
-  // printf("\n\n %16g %16g %16g \n", rms, E0, 2.0 * (E0 - mxEigenV)/len);
-
-  if (rot == nullptr)
-    return -1; // Don't bother with rotation.
-
   double a11, a12, a13, a14, a21, a22, a23, a24;
-  a11 = SxxpSyy + Szz-mxEigenV; a12 = SyzmSzy; a13 = - SxzmSzx; a14 = SxymSyx;
-  a21 = SyzmSzy; a22 = SxxmSyy - Szz-mxEigenV; a23 = SxypSyx; a24= SxzpSzx;
+  a11 = Sxx+Syy + Szz-mxEigenV; a12 = Syz-Szy; a13 = Szx - Sxz; a14 = Sxy-Syx;
+  a21 = Syz-Szy; a22 = Sxx-Syy - Szz-mxEigenV; a23 = Sxy+Syx; a24= Sxz+Szx;
   double a31, a32, a33, a34, a41, a42, a43, a44;
-  a31 = a13; a32 = a23; a33 = Syy-Sxx-Szz - mxEigenV; a34 = SyzpSzy;
-  a41 = a14; a42 = a24; a43 = a34; a44 = Szz - SxxpSyy - mxEigenV;
+  a31 = a13; a32 = a23; a33 = Syy-Sxx-Szz - mxEigenV; a34 = Syz+Szy;
+  a41 = a14; a42 = a24; a43 = a34; a44 = Szz - Sxx - Syy - mxEigenV;
   double a3344_4334, a3244_4234, a3243_4233, a3143_4133,a3144_4134, a3142_4132;
   a3344_4334 = a33 * a44 - a43 * a34; a3244_4234 = a32 * a44-a42*a34;
   a3243_4233 = a32 * a43 - a42 * a33; a3143_4133 = a31 * a43-a41*a33;
@@ -272,6 +201,83 @@ inline int fast_calc_rmsd_and_rotation(Mat33* rot, const Mat33& A, double *rmsd,
   rot->a[2][1] = 2 * (yz - ax);
   rot->a[2][2] = a2 - x2 - y2 + z2;
 
+  return 1;
+}
+
+// helper function
+inline int fast_calc_rmsd_and_rotation(Mat33* rot, const Mat33& A, double *rmsd,
+                                       double E0, double len) {
+  const double evalprec = 1e-11;
+
+  double Sxx, Sxy, Sxz, Syx, Syy, Syz, Szx, Szy, Szz;
+  Sxx = A[0][0]; Sxy = A[0][1]; Sxz = A[0][2];
+  Syx = A[1][0]; Syy = A[1][1]; Syz = A[1][2];
+  Szx = A[2][0]; Szy = A[2][1]; Szz = A[2][2];
+
+  double Sxx2 = Sxx * Sxx;
+  double Syy2 = Syy * Syy;
+  double Szz2 = Szz * Szz;
+
+  double Sxy2 = Sxy * Sxy;
+  double Syz2 = Syz * Syz;
+  double Sxz2 = Sxz * Sxz;
+
+  double Syx2 = Syx * Syx;
+  double Szy2 = Szy * Szy;
+  double Szx2 = Szx * Szx;
+
+  double SyzSzymSyySzz2 = 2.0 * (Syz*Szy - Syy*Szz);
+  double Sxx2Syy2Szz2Syz2Szy2 = Syy2 + Szz2 - Sxx2 + Syz2 + Szy2;
+
+  double C[4];
+  C[2] = -2.0 * (Sxx2 + Syy2 + Szz2 + Sxy2 + Syx2 + Sxz2 + Szx2 + Syz2 + Szy2);
+  C[1] = 8.0 * (Sxx*Syz*Szy + Syy*Szx*Sxz + Szz*Sxy*Syx - Sxx*Syy*Szz - Syz*Szx*Sxy - Szy*Syx*Sxz);
+
+  double SxzpSzx = Sxz + Szx;
+  double SyzpSzy = Syz + Szy;
+  double SxypSyx = Sxy + Syx;
+  double SyzmSzy = Syz - Szy;
+  double SxzmSzx = Sxz - Szx;
+  double SxymSyx = Sxy - Syx;
+  double SxxpSyy = Sxx + Syy;
+  double SxxmSyy = Sxx - Syy;
+  double Sxy2Sxz2Syx2Szx2 = Sxy2 + Sxz2 - Syx2 - Szx2;
+
+  C[0] = Sxy2Sxz2Syx2Szx2 * Sxy2Sxz2Syx2Szx2
+    + (Sxx2Syy2Szz2Syz2Szy2 + SyzSzymSyySzz2) * (Sxx2Syy2Szz2Syz2Szy2 - SyzSzymSyySzz2)
+    + (-(SxzpSzx)*(SyzmSzy)+(SxymSyx)*(SxxmSyy-Szz)) * (-(SxzmSzx)*(SyzpSzy)+(SxymSyx)*(SxxmSyy+Szz))
+    + (-(SxzpSzx)*(SyzpSzy)-(SxypSyx)*(SxxpSyy-Szz)) * (-(SxzmSzx)*(SyzmSzy)-(SxypSyx)*(SxxpSyy+Szz))
+    + (+(SxypSyx)*(SyzpSzy)+(SxzpSzx)*(SxxmSyy+Szz)) * (-(SxymSyx)*(SyzmSzy)+(SxzpSzx)*(SxxpSyy+Szz))
+    + (+(SxypSyx)*(SyzmSzy)+(SxzmSzx)*(SxxmSyy-Szz)) * (-(SxymSyx)*(SyzpSzy)+(SxzmSzx)*(SxxpSyy-Szz));
+
+  /* Newton-Raphson */
+  double mxEigenV = E0;
+  int i;
+  double oldg = 0.0;
+  for (i = 0; i < 50; ++i) {
+    oldg = mxEigenV;
+    double x2 = mxEigenV * mxEigenV;
+    double b = (x2 + C[2]) * mxEigenV;
+    double a = b + C[1];
+    double delta = (a * mxEigenV + C[0]) / (2.0 * x2 * mxEigenV + b + a);
+    mxEigenV -= delta;
+    // printf("\n diff[%3d]: %16g %16g %16g", i, mxEigenV - oldg, evalprec*mxEigenV, mxEigenV);
+    if (std::fabs(mxEigenV - oldg) < std::fabs(evalprec * mxEigenV))
+      break;
+  }
+  if (i == 50)
+    std::fprintf(stderr,"\nMore than %d iterations needed!\n", i);
+
+  // the fabs() is to guard against extremely small, but *negative* numbers
+  // due to floating point error
+  double rms = std::sqrt(std::fabs(2.0 * (E0 - mxEigenV) / len));
+  (*rmsd) = rms;
+  // printf("\n\n %16g %16g %16g \n", rms, E0, 2.0 * (E0 - mxEigenV)/len);
+
+  if (rot == nullptr)
+    return -1; // Don't bother with rotation.
+  else
+    fast_calc_rotation(rot, Sxx, Syy, Szz, Sxy, Syx, Sxz, Szx, Syz, Szy, mxEigenV);
   return 1;
 }
 

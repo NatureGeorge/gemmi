@@ -150,18 +150,17 @@ enum class SupSelect {
   All
 };
 
-inline SupResult calculate_superposition(ConstResidueSpan fixed,
-                                         ConstResidueSpan movable,
-                                         PolymerType ptype,
-                                         SupSelect sel,
-                                         char altloc='\0',
-                                         bool current_rmsd=false,
-                                         bool transform=true
-                                         ) {
+inline int prepare_superposition(ConstResidueSpan fixed,
+                                 ConstResidueSpan movable,
+                                 PolymerType ptype,
+                                 SupSelect sel,
+                                 std::vector<Position>& pos1,
+                                 std::vector<Position>& pos2,
+                                 char altloc='\0'
+                                 ) {
   AlignmentScoring scoring;
   AlignmentResult result = align_sequence_to_polymer(fixed.extract_sequence(),
                                                      movable, ptype, scoring);
-  std::vector<Position> pos1, pos2;
   auto it1 = fixed.first_conformer().begin();
   auto it2 = movable.first_conformer().begin();
   std::string name = "CA";
@@ -196,6 +195,19 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
         ++it2;
     }
   }
+  return 1;
+}
+
+inline SupResult calculate_superposition(ConstResidueSpan fixed,
+                                         ConstResidueSpan movable,
+                                         PolymerType ptype,
+                                         SupSelect sel,
+                                         char altloc='\0',
+                                         bool current_rmsd=false,
+                                         bool transform=true
+                                         ) {
+  std::vector<Position> pos1, pos2;
+  prepare_superposition(fixed, movable, ptype, sel, pos1, pos2, altloc);
   if (current_rmsd) {
     SupResult r;
     r.count = pos1.size();

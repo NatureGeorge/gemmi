@@ -114,6 +114,16 @@ void add_alignment(py::module& m) {
     .def("apply", &apply_superposition)
     ;
 
+  m.def("prepare_superposition",
+        [](const ResidueSpan &fixed, const ResidueSpan &movable,
+           PolymerType ptype, SupSelect sel, char altloc) {
+            std::vector<Position> pos1, pos2;
+            prepare_superposition(fixed, movable, ptype, sel, pos1, pos2, altloc);
+            std::list<std::vector<Position>> pos12 = {pos1, pos2};
+            return pos12;
+        }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
+           py::arg("altloc")='\0');
+
   m.def("calculate_superposition",
         [](const ResidueSpan& fixed, const ResidueSpan& movable,
            PolymerType ptype, SupSelect sel, char altloc, bool current_rmsd, bool transform) {
