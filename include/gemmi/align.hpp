@@ -211,7 +211,7 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
   if (superposed_rmsd) {
     SupResult r;
     r.count = pos1.size();
-    calculate_rmsd_of_superposed_positions(pos1.data(), pos2.data(), pos1.size(), weights);
+    r.rmsd = calculate_rmsd_of_superposed_positions(pos1.data(), pos2.data(), pos1.size(), weights);
     return r;
   }
   
