@@ -116,25 +116,17 @@ void add_alignment(py::module& m) {
 
   m.def("calculate_superposition",
         [](const ResidueSpan& fixed, const ResidueSpan& movable,
-           PolymerType ptype, SupSelect sel, char altloc, bool current_rmsd, bool superposed_rmsd) {
-          return calculate_superposition(fixed, movable, ptype, sel, altloc, current_rmsd, superposed_rmsd);
+           PolymerType ptype, SupSelect sel, char altloc, bool current_rmsd, bool transform) {
+          return calculate_superposition(fixed, movable, ptype, sel, altloc, current_rmsd, transform);
         }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
-           py::arg("altloc")='\0', py::arg("current_rmsd")=false, py::arg("superposed_rmsd")=false);
+           py::arg("altloc")='\0', py::arg("current_rmsd")=false, py::arg("transform")=true);
 
   m.def("superpose_positions",
         [](std::vector<Position> pos1, std::vector<Position> pos2,
-           const std::vector<double>& weight) {
+           const std::vector<double>& weight, bool transform) {
           return superpose_positions(pos1.data(), pos2.data(), pos1.size(),
-                                     weight.empty() ? nullptr : weight.data());
-        }, py::arg("pos1"), py::arg("pos2"), py::arg("weight")=std::vector<int>{});
-
-  m.def("calculate_rmsd_of_superposed_positions",
-        [](std::vector<Position> pos1, std::vector<Position> pos2,
-           const std::vector<double> &weight) {
-          return calculate_rmsd_of_superposed_positions(
-                                     pos1.data(), pos2.data(), pos1.size(),
-                                     weight.empty() ? nullptr : weight.data());
-        }, py::arg("pos1"), py::arg("pos2"), py::arg("weight")=std::vector<int>{});
+                                     weight.empty() ? nullptr : weight.data(), transform);
+        }, py::arg("pos1"), py::arg("pos2"), py::arg("weight")=std::vector<int>{}, py::arg("transform")=true);
 }
 
 void add_assign_label_seq_id(py::class_<Structure>& structure) {

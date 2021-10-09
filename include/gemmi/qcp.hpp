@@ -116,7 +116,7 @@ inline double qcp_inner_product(Mat33& mat, const Position* pos1, const Position
 
 // helper function
 inline int fast_calc_rmsd_and_rotation(Mat33* rot, const Mat33& A, double *rmsd,
-                                       double E0, double len, double min_score) {
+                                       double E0, double len) {
   const double evecprec = 1e-6;
   const double evalprec = 1e-11;
 
@@ -186,10 +186,7 @@ inline int fast_calc_rmsd_and_rotation(Mat33* rot, const Mat33& A, double *rmsd,
   // printf("\n\n %16g %16g %16g \n", rms, E0, 2.0 * (E0 - mxEigenV)/len);
 
   if (rot == nullptr)
-    return -1;
-  if (min_score > 0)
-    if (rms < min_score)
-      return -1; // Don't bother with rotation.
+    return -1; // Don't bother with rotation.
 
   double a11, a12, a13, a14, a21, a22, a23, a24;
   a11 = SxxpSyy + Szz-mxEigenV; a12 = SyzmSzy; a13 = - SxzmSzx; a14 = SxymSyx;
@@ -297,7 +294,7 @@ inline Position qcp_center_coords(Position* pos, size_t len, const double *weigh
 // Does not perform the superposition, only returns the operation to be used.
 // As a side effect, both pos1 and pos2 are shifted (centered at 0).
 inline SupResult superpose_positions(Position* pos1, Position *pos2,
-                                     size_t len, const double *weight) {
+                                     size_t len, const double *weight, bool transform) {
   SupResult result;
   result.count = len;
 
@@ -317,35 +314,13 @@ inline SupResult superpose_positions(Position* pos1, Position *pos2,
   double E0 = qcp_inner_product(A, pos1, pos2, len, weight);
 
   /* calculate the RMSD & rotational matrix */
-  fast_calc_rmsd_and_rotation(&result.transform.mat, A, &result.rmsd, E0, wsum, -1);
-  result.transform.vec = Vec3(result.center1) - result.transform.mat.multiply(result.center2);
+  if (transform) {
+    fast_calc_rmsd_and_rotation(&result.transform.mat, A, &result.rmsd, E0, wsum);
+    result.transform.vec = Vec3(result.center1) - result.transform.mat.multiply(result.center2);
+  } else{
+    fast_calc_rmsd_and_rotation(nullptr, A, &result.rmsd, E0, wsum);
+  }
 
-  return result;
-}
-
-// Similar to superpose_positions(), but calculates RMSD only.
-// As a side effect, both pos1 and pos2 are shifted (centered at 0).
-inline double calculate_rmsd_of_superposed_positions(Position* pos1, Position *pos2,
-                                                     size_t len, const double *weight) {
-  double result;
-
-  // center the structures
-  qcp_center_coords(pos1, len, weight);
-  qcp_center_coords(pos2, len, weight);
-
-  double wsum = 0.0;
-  if (weight == nullptr)
-    wsum = (double) len;
-  else
-    for (size_t i = 0; i < len; ++i)
-      wsum += weight[i];
-
-  // calculate the (weighted) inner product of two structures
-  Mat33 A(0);
-  double E0 = qcp_inner_product(A, pos1, pos2, len, weight);
-
-  // calculate the RMSD
-  fast_calc_rmsd_and_rotation(nullptr, A, &result, E0, wsum, -1);
   return result;
 }
 
